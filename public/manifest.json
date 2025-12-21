@@ -1,0 +1,17 @@
+{
+    "name": "Namelime - Premium Naming",
+    "short_name": "Namelime",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#FAFAFA",
+    "theme_color": "#EBFF00",
+    "description": "Premium startup naming tool powered by AI.",
+    "icons": [
+        {
+            "src": "logo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

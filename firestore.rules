@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Namelime Tered Plan Security
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Prevent users from manually upgrading their own plan
+      // Plan updates must come from an admin or a server-side action (e.g. Stripe webhook)
+      allow create, update: if request.auth != null && request.auth.uid == userId 
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['plan']))
+        && validateGenerationCount(request.resource.data, resource.data);
+    }
+    
+    // User Generation History
+    match /users/{userId}/history/{docId} {
+      allow read, create: if request.auth != null && request.auth.uid == userId;
+      allow update, delete: if false; // History is immutable for security
+    }
+    
+    // Global Config
+    match /app_config/{docId} {
+      allow read: if true;
+      allow write: if false; // Only admins can change app config
+    }
+
+    // --- Validation Functions ---
+    
+    function validateGenerationCount(next, prev) {
+      let isSameDay = next.lastGenerationDate == prev.lastGenerationDate;
+      let countIncrement = next.generationsTodayCount - prev.generationsTodayCount;
+      
+      // If it's a new day, count must reset or be 1
+      let dayResetValid = !isSameDay && (next.generationsTodayCount == 1 || next.generationsTodayCount == 0);
+      
+      // If it's the same day, count can only increase by 1
+      let incrementValid = isSameDay && countIncrement <= 1;
+      
+      // Enforce 3/day limit for free users
+      let limitValid = next.plan == 'pro' || next.generationsTodayCount <= 3;
+      
+      return (dayResetValid || incrementValid) && limitValid;
+    }
+  }
+}
