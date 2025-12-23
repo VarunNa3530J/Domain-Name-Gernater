@@ -1,10 +1,10 @@
-export type Page = 'onboarding' | 'login' | 'register' | 'dashboard' | 'results' | 'pricing' | 'account' | 'history' | 'settings' | 'admin';
+export type Page = 'login' | 'register' | 'dashboard' | 'results' | 'pricing' | 'account' | 'history' | 'settings' | 'admin' | 'terms' | 'privacy';
 
 export type PlanType = 'free' | 'pro';
 
 export type WordCountPreference = '1-word' | '2-word' | 'both';
 
-export type TargetPlatform = 'Business' | 'App' | 'Website' | 'Service';
+export type TargetPlatform = 'Business' | 'App' | 'Website' | 'Service' | 'YouTube' | 'Agency' | 'Product' | 'Game';
 
 export type CultureVibe = 'Global' | 'Indian' | 'American' | 'European' | 'Asian';
 

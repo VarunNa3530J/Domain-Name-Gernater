@@ -2,11 +2,16 @@
 import { initializeApp } from "firebase/app";
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+export {
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword
+} from "firebase/auth";
 import {
     getAuth,
     signInWithPopup,
     signInWithCredential,
-    GoogleAuthProvider
+    GoogleAuthProvider,
+    OAuthProvider,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
@@ -22,6 +27,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+export const microsoftProvider = new OAuthProvider('microsoft.com');
+export const appleProvider = new OAuthProvider('apple.com');
 export const db = getFirestore(app);
 
 // Initialize GoogleAuth for Capacitor
@@ -59,6 +66,26 @@ export const signInWithGoogle = async () => {
         }
     } catch (e) {
         console.error('[Auth] Google Sign-In Error:', e);
+        throw e;
+    }
+};
+
+export const signInWithMicrosoft = async () => {
+    try {
+        const result = await signInWithPopup(auth, microsoftProvider);
+        return result;
+    } catch (e) {
+        console.error('[Auth] Microsoft Sign-In Error:', e);
+        throw e;
+    }
+};
+
+export const signInWithApple = async () => {
+    try {
+        const result = await signInWithPopup(auth, appleProvider);
+        return result;
+    } catch (e) {
+        console.error('[Auth] Apple Sign-In Error:', e);
         throw e;
     }
 };

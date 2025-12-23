@@ -68,16 +68,16 @@ const DEFAULT_CONFIG: AppConfig = {
         currency: '$',
         plans: {
             hobbyist: {
-                name: 'Free Plan',
+                name: 'Hobbyist',
                 price: 0,
-                perks: ['3 names every day', 'Standard AI names']
+                perks: ['3 names per day', 'Basic AI styles', 'View history', 'Standard results']
             },
             founder: {
-                name: 'Pro Plan',
+                name: 'Founder Pro',
                 monthlyPrice: 15,
                 yearlyPrice: 12,
                 badge: 'Popular',
-                perks: ['Unlimited generations', 'Check domain names', 'Custom styles', 'Save your names']
+                perks: ['Unlimited generations', 'All premium AI styles', 'Domain availability check', 'Full history access', 'Priority support']
             }
         }
     }
@@ -138,7 +138,7 @@ export const useAppConfig = () => {
             (window as any).firestore_status = 'Error';
             // Show alert once for debugging
             if (loading) {
-                alert("Firestore Sync Error: " + error.message);
+                console.warn("Firestore Sync Error: " + error.message);
             }
             setLoading(false);
         });

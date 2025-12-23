@@ -7,7 +7,8 @@ import { GenerationRequest, GeneratedName } from "../types";
 
 export const generateStartupNames = async (
   request: GenerationRequest,
-  _isPro: boolean
+  _isPro: boolean,
+  excludeNames?: string[]
 ): Promise<GeneratedName[]> => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
@@ -18,31 +19,61 @@ export const generateStartupNames = async (
   const ai = new GoogleGenAI({ apiKey });
 
   const systemInstruction = `
-    You are an Elite Silicon Valley Naming Architect. Your objective is to engineer "Sovereign-Class" startup identities that command instant market authority.
+    You are an Elite Silicon Valley Naming Architect. Your objective is not just to generate names, but to cure "Bland Brand Syndrome".
     
-    CORE PHILOSOPHY:
-    - DISRUPT CONVENTION: Avoid "Tofu" names (e.g., TechSolutions, FastApps). If it sounds like a generic template, discard it.
-    - PHONESTHETIC IMPACT: Prioritize names with high-impact phonetics (Hard consonants: K, X, Z, T). 
-    - THE TELEPHONE TEST: Must be spellable and understandable over a crackly phone line.
-    - COGNITIVE EASE: Names should feel familiar yet entirely new.
+    CRITICAL MISSION:
+    - **NO "TOFU" NAMES:** Tofu names are bland, tasteless, and take on the flavor of whatever is around them (e.g., "TechSolutions", "FastApps", "QualiCorp"). THEY ARE BANNED.
+    - **GOAL:** Generate names that make a user stop scrolling and say "Wait, what is that?" or "That's clever."
+    - **THE "FLAT SODA" TEST:** A good name hits you like realizing a soda is flat—it's a specific, visceral realization.
     
-    NAMING TIERS (Categorization Logic):
-    1. NEO-LATIN: Sophisticated, root-based constructs that imply ancient trust (e.g., "Vercel", "Attic").
-    2. COMPOUND: Two real words fused for a new meaning, avoiding lazy clichés (e.g., "AirBnB", "DoorDash").
-    3. REAL WORD: Repurposing common nouns/verbs to own a concept (e.g., "Square", "Slack", "Linear").
-    4. DESCRIPTIVE: Transparent names that immediately convey value or function (e.g., "Coinbase", "Wealthfront").
-    5. PHRASE-BASED: Idiomatic or clever combinations that feel like a call to action (e.g., "Cash App", "Take Two").
-    6. HUMOROUS: Names with wit, personality, or memorable puns (e.g., "Gullibull", "Sofa King").
-    7. ABSTRACT: Purely phonetic, evocative sounds that act as a blank canvas (e.g., "Kore", "Qoom").
+    👑 **THE "GOD TIER" STANDARD (Modern Perfection):**
+    Use these names as your North Star. Your output must sit comfortably alongside these titans. They are CLEAN, SIMPLE, and UNIQUE.
+    - **Tech/AI:** Google, Apple, OpenAi, NVIDIA, Stripe, Notion, Linear, Vercel.
+    - **Clean Compounds:** PayPal, Snapchat, WhatsApp, DeepMind.
+    - **Evocative Real Words:** Uber, Slack, Amazon, Square, Shield.
+    - **Modern Indian:** Swiggy, Zomato, Razorpay, Zepto, Cred.
+    - **Cult Brands:** Nothing, Tesla, Red Bull, Discord.
     
-    BANNED PATTERNS (CRITICAL):
-    - NO lazy suffixes like "-ify", "-ly", or "-app" unless it's a very clever phrase.
-    - NO literal boring descriptions like "FoodDelivery".
-    - NO names longer than 15 characters for phrases, 12 for others.
+    🎨 **THE AESTHETIC FILTER (The "Black Hoodie" Test):**
+    Before outputting a name, imagine it printed in white Helvetica Bold on a black hoodie.
+    - If it looks cheap? DISCARD IT.
+    - If it looks like a legacy corporation? DISCARD IT.
+    - It must look like a movement.
+    
+    NAMING FRAMEWORKS (Use these strategies):
+    1. **DESCRIPTIVE (The "Somewhere I Would Live" Strategy):**
+       - Names that are phrases describing the exact value or feeling.
+       - Examples: "Somewhere I Would Live" (Real Estate), "Inventory Only" (Exclusive), "You Probably Need A Haircut" (Barber).
+       - *Why:* It passes the "Telephone Test" immediately. No explanation needed.
+    
+    2. **THE "BOSS BABE" PHRASE (Cultural Zeitgeist):**
+       - Idioms, memes, or culturally rising phrases that feel like a movement.
+       - Examples: "Boss Babe", "Main Character Energy", "POV", "After Party".
+       - *Why:* It feels like it already exists in the user's brain.
+    
+    3. **HUMOR & WIT (The "You Probably Need A Robot" Strategy):**
+       - Names that inherently make you smile or laugh.
+       - Examples: "You Probably Need A Robot" (AI Automation), "Complain to Me" (Feedback tool).
+       - *Why:* Humor gets shared.
+    
+    4. **ACTION VERBS (The "Bump" Strategy):**
+       - Use the core action of the product as the name.
+       - Examples: "Bump", "Slack", "Tinder" (Spark).
+    
+    5. **NOVELTY & ALLITERATION (The "Pretty Perfect" Strategy):**
+       - "Incred" (Short for Incredible), "Pretty Perfect". 
+       - Catchy, rhythmic, and easy to say.
+    
+    AVOID THESE (The "Tofu" Bin):
+    - Generic compound words (e.g., "AgileSoft").
+    - Words that could mean anything to anyone (e.g., "Dispatch", "Summit").
+    - Hard-to-spell French words unless high luxury (e.g., "Cloe" vs "Pierre").
+    - "GameStop" style names (Don't put a "Stop" in a name where you want movement).
     
     TASK:
-    Generate 5 distinct, high-fidelity startup names based on the input.
-    Strictly follow the user's word count preference if provided.
+    Generate 5 distinct, high-fidelity startup names.
+    Mix these frameworks. Do not just generic one-word names. Give me PHRASES, give me WIT.
+    STRICTLY follow word count if provided.
   `;
 
   const schema: Schema = {
@@ -74,21 +105,34 @@ export const generateStartupNames = async (
       ${request.keywords ? `REQUISITE KEYWORDS: ${request.keywords}` : ''}
       WORD STRUCTURE PREFERENCE: ${request.wordCount || 'Any'}
       
-      CRITICAL CONSTRAINT: If 1-word is requested, ensuring the name is a single connected string. If 2-word or Phrase is requested, favor clever combinations.
-      If TARGET PLATFORM is 'App', prioritize names that work well as app store icons and short labels.
+      ${excludeNames && excludeNames.length > 0 ? `
+      CRITICAL CONSTRAINT (EXCLUSION LIST):
+      The user has already seen the following names. DO NOT GENERATE THESE AGAIN:
+      [${excludeNames.join(', ')}]
+      Generating any of these names will result in immediate failure. Be creative and find new angles.
+      ` : ''}
+
+      CRITICAL PLATFORM CONTEXT:
+      - If TARGET PLATFORM is 'App': Prioritize short, punchy names (max 6 chars) that look great as an App Icon.
+      - If TARGET PLATFORM is 'YouTube': Focus on high-energy, personality-driven names that sound like a media brand.
+      - If TARGET PLATFORM is 'Agency': Use sophisticated, trust-building names (Neo-Latin or Elegant Compounds).
+      - If TARGET PLATFORM is 'Game': Go for immersive, lore-heavy, or edgy names.
+      - If TARGET PLATFORM is 'Product': Focus on tactile, descriptive, or catchy real-world nouns.
+      
+      CRITICAL CONSTRAINT: If 1-word is requested, ensure the name is a single connected string. If 2-word or Phrase is requested, favor clever combinations.
       If CULTURE VIBE is 'Indian', consider names that resonate with Indian market sensibilities while staying modern.
       
       Generate naming concepts that provide a competitive moat and high recall.
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         systemInstruction: systemInstruction,
         responseMimeType: "application/json",
         responseSchema: schema,
-        temperature: 1.0, // Maximum neural variability for distinctiveness
+        temperature: 0.9, // Slightly lowered for focused brilliance
       },
     });
 

@@ -12,7 +12,8 @@ const Settings = ({ user, onLogout, onNavigate }: Props) => {
     if (!user) return null;
     const [pushEnabled, setPushEnabled] = useState(true);
     const [darkMode, setDarkMode] = useState(() => {
-        return localStorage.getItem('theme') === 'dark';
+        const stored = localStorage.getItem('theme');
+        return stored ? stored === 'dark' : true;
     });
 
     const toggleDarkMode = () => {
@@ -32,7 +33,7 @@ const Settings = ({ user, onLogout, onNavigate }: Props) => {
     return (
         <div className="relative min-h-full flex flex-col px-5 pb-40 bg-background transition-colors duration-500">
             {/* Header */}
-            <header className="pt-[calc(env(safe-area-inset-top)+1.0rem)] mb-6 flex items-center justify-between">
+            <header className="pt-[calc(env(safe-area-inset-top)+0.5rem)] mb-6 flex items-center justify-between">
                 <button
                     onClick={() => onNavigate('dashboard')}
                     className="w-10 h-10 rounded-full bg-surface border border-border flex items-center justify-center text-text-muted hover:text-text-main transition-colors"

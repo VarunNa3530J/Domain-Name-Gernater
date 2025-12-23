@@ -6,13 +6,13 @@ services:
     buildCommand: npm install
     startCommand: npm run server
     envVars:
-      - key: CLOUDINARY_CLOUD_NAME
+      - key: doit0abat
         sync: false
-      - key: CLOUDINARY_API_KEY
+      - key: 574812614614553
         sync: false
-      - key: CLOUDINARY_API_SECRET
+      - key: rniXO-nQWOpLhsDEQEydU0zDJy4
         sync: false
-      - key: STRIPE_SECRET_KEY
+      - key: pk_test_51SgUpLHg5Yy2uSkfYCfO2hiOPNKjRBhvmOQNJzO0vNgmI5g1SWpNR3LCQyjh9ZzXXertL23Ytmb891GRbA8bGdfV008ubLPv3c
         sync: false
       - key: VITE_APP_URL
         value: https://namelime-app.vercel.app # Placeholder: User will need to update this after frontend deploy

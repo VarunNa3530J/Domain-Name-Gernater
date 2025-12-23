@@ -103,7 +103,7 @@ const History: React.FC<Props> = ({ user, onSelect }) => {
     <div className="min-h-full bg-background transition-colors duration-500">
       <div className="flex flex-col w-full max-w-2xl mx-auto">
         {/* Header */}
-        <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.0rem)] pb-5">
+        <div className="px-5 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-5">
           <h1 className="text-4xl font-black text-text-main tracking-tight mb-2 dark:text-gradient-premium">History</h1>
           <p className="text-[13px] font-bold text-text-muted uppercase tracking-widest">
             Past Generations

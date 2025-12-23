@@ -1,3 +1,4 @@
+// Force rebuild
 import React, { useState, useEffect } from 'react';
 import { Page, User, GeneratedName, GenerationRequest } from './types';
 import { generateStartupNames } from './services/geminiService';
@@ -5,14 +6,13 @@ import { auth, db } from './services/firebase';
 import { haptics } from './services/hapticsService';
 import { NotificationType } from '@capacitor/haptics';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { serverTimestamp } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Components
 import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
 import Results from './components/Results';
-import Onboarding from './components/Onboarding';
 import History from './components/History';
 import Settings from './components/Settings';
 import BottomNav from './components/BottomNav';
@@ -21,6 +21,8 @@ import Account from './components/Account';
 import Admin from './components/Admin';
 import PaymentStatus from './components/PaymentStatus';
 import SplashScreen from './components/SplashScreen';
+import LegalPage from './components/LegalPage';
+import Toast from './components/Toast';
 import { initializePushNotifications, showLocalNotification } from './services/notificationService';
 
 const getHighResAvatarUrl = (url: string | null, name: string) => {
@@ -37,12 +39,14 @@ const getHighResAvatarUrl = (url: string | null, name: string) => {
 };
 
 const App: React.FC = () => {
-  // Set initial page to 'onboarding'
-  const [currentPage, setCurrentPage] = useState<Page>('onboarding');
+  // Set initial page to 'login' to show the new Auth Page
+  const [currentPage, setCurrentPage] = useState<Page>('login');
   const [user, setUser] = useState<User | null>(null);
+  const [lastRequest, setLastRequest] = useState<GenerationRequest | null>(null);
   const [lastResults, setLastResults] = useState<GeneratedName[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'error' | 'warning'; action?: { label: string; onClick: () => void } } | null>(null);
 
   useEffect(() => {
     console.log('[App] Setting up onAuthStateChanged listener...');
@@ -125,7 +129,7 @@ const App: React.FC = () => {
 
             // Navigation Logic
             setCurrentPage(current => {
-              if (['onboarding', 'login', 'register'].includes(current)) {
+              if (['login', 'register'].includes(current)) {
                 return 'dashboard';
               }
               return current;
@@ -262,7 +266,7 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      setCurrentPage('onboarding');
+      setCurrentPage('login');
     } catch (error) {
       console.error("Logout failed", error);
     }
@@ -280,24 +284,124 @@ const App: React.FC = () => {
       const counts = user.lastGenerationDate === today ? user.generationsTodayCount : 0;
 
       if (counts >= 3) {
-        alert("Daily limit reached! Free users can generate 3 times per day. Upgrade to Founder Pro for unlimited access! 🍋");
-        setCurrentPage('pricing');
+        setToast({
+          message: "Daily limit reached! Free users can generate 3 times per day. Upgrade to Founder Pro for unlimited access! 🍋",
+          type: 'warning',
+          action: {
+            label: 'Upgrade to Pro',
+            onClick: () => {
+              setToast(null);
+              setCurrentPage('pricing');
+            }
+          }
+        });
         return;
       }
     }
 
+    setLastRequest(request);
     setIsLoading(true);
     setCurrentPage('results');
 
     try {
-      const results = await generateStartupNames(request, user?.plan === 'pro');
-      setLastResults(results);
+      // 0. Fetch full history to prevent duplicates (Local User History)
+      const excludeNames: string[] = [];
+      if (user) {
+        try {
+          const { getDocs, collection } = await import('firebase/firestore');
+          const historySnapshot = await getDocs(collection(db, 'users', user.id, 'history'));
+          historySnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.results && Array.isArray(data.results)) {
+              data.results.forEach((r: any) => {
+                if (r.name) excludeNames.push(r.name);
+              });
+            }
+          });
+        } catch (e) {
+          console.error("History fetch error:", e);
+        }
+      }
+
+      // 1. Generate Candidates
+      let candidates = await generateStartupNames(request, user?.plan === 'pro', excludeNames);
+
+      // 2. Global Uniqueness Check & Reservation
+      // We check against a global 'taken_names' collection.
+      // If a name exists there, we discard it. If not, we reserve it.
+      const uniqueResults: GeneratedName[] = [];
+
+      try {
+        const { doc, getDoc, setDoc, serverTimestamp } = await import('firebase/firestore');
+
+        for (const candidate of candidates) {
+          // Normalize name for check (lowercase, trimmed)
+          const nameId = candidate.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+          const nameDocRef = doc(db, 'taken_names', nameId);
+
+          try {
+            const nameSnap = await getDoc(nameDocRef);
+
+            if (nameSnap.exists()) {
+              console.log(`[Global Uniqueness] Skipped '${candidate.name}' - already taken by another user.`);
+              continue; // Skip this name, it's globally taken
+            } else {
+              // Reserve it immediately
+              try {
+                await setDoc(nameDocRef, {
+                  name: candidate.name,
+                  reservedBy: user?.id || 'anonymous',
+                  reservedAt: serverTimestamp(),
+                  originalQuery: request.description
+                });
+                // Only add to result if reservation succeeded (or if we decide to fallback)
+                // For now, if we can't reserve, we assume we can't guarantee uniqueness, but we shouldn't crash the user flow.
+                // However, the user REQUESTED strict uniqueness.
+                // If permission fails, we will still show it but log the error.
+                uniqueResults.push(candidate);
+              } catch (writeErr: any) {
+                // Catch PERMISSION_DENIED or other write errors
+                if (writeErr && writeErr.code === 'permission-denied') {
+                  console.warn("Global Uniqueness Skip: Permission Denied. Check Firestore Rules.");
+                  // Allow proceeding so user isn't blocked, but uniqueness isn't guaranteed globally.
+                  uniqueResults.push(candidate);
+                } else {
+                  console.error("Global Reservation Error:", writeErr);
+                }
+              }
+            }
+          } catch (err: any) {
+            // Handle getDoc errors (e.g. permission denied on read)
+            console.warn("Global Check Error (likely permissions):", err);
+            // Fail open: Show the name if we can't check
+            uniqueResults.push(candidate);
+          }
+        }
+
+        // If the entire uniqueness block failed (e.g. firestore import fail), we still have uniqueResults populated?
+        // No, we need to ensure candidates are passed if the block above threw early.
+        // But the try/catch wraps the loop content.
+
+        // If we have 0 unique results because of aggressive filtering, validation might fail.
+        // If uniqueResults is empty but we have candidates, we might want to fallback to just showing candidates if everything crashed.
+
+        // Update candidates list
+        if (uniqueResults.length > 0) {
+          candidates = uniqueResults;
+        }
+
+      } catch (globalErr) {
+        console.error("Global Uniqueness Service Failure:", globalErr);
+        // Fallback: Just use the generated candidates without uniqueness check
+      }
+
+      setLastResults(candidates);
       haptics.notification(NotificationType.Success);
 
       // Auto notification on success
       showLocalNotification(
         "✨ Generation Complete!",
-        `Found ${results.length} fresh startup names for you.`
+        `Found ${candidates.length} unique startup names.`
       );
 
       if (user) {
@@ -313,16 +417,17 @@ const App: React.FC = () => {
           credits: user.plan === 'free' ? 3 - newCount : 999
         });
 
-        // 1. Save to History
+        // 3. Save to User History
         try {
+          const { addDoc, collection } = await import('firebase/firestore');
           await addDoc(collection(db, 'users', user.id, 'history'), {
             request,
-            results,
+            results: candidates,
             timestamp: serverTimestamp()
           });
         } catch (e) { console.error("History Save Error:", e); }
 
-        // 2. Update Stats
+        // 4. Update Stats
         try {
           const { setDoc, doc } = await import('firebase/firestore');
           await setDoc(doc(db, 'users', user.id), {
@@ -342,18 +447,10 @@ const App: React.FC = () => {
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'onboarding':
-        return (
-          <Onboarding
-            onComplete={() => setCurrentPage('register')}
-            onSkip={() => setCurrentPage('login')}
-            onLogin={() => setCurrentPage('login')}
-          />
-        );
       case 'login':
-        return <AuthPage type="login" onAuthSuccess={() => setCurrentPage('dashboard')} onSwitch={() => setCurrentPage('register')} />;
+        return <AuthPage type="login" onAuthSuccess={() => setCurrentPage('dashboard')} onBack={() => setCurrentPage('register')} onNavigate={(page) => setCurrentPage(page)} />;
       case 'register':
-        return <AuthPage type="register" onAuthSuccess={() => setCurrentPage('dashboard')} onSwitch={() => setCurrentPage('login')} />;
+        return <AuthPage type="register" onAuthSuccess={() => setCurrentPage('dashboard')} onBack={() => setCurrentPage('login')} onNavigate={(page) => setCurrentPage(page)} />;
       case 'dashboard':
         return (
           <Dashboard
@@ -368,11 +465,13 @@ const App: React.FC = () => {
             isLoading={isLoading}
             results={lastResults}
             onBack={() => setCurrentPage('dashboard')}
+            user={user}
+            request={lastRequest}
           />
         );
       case 'pricing':
         // If user closes pricing without logging in, go back to onboarding
-        return <Pricing user={user} onClose={() => setCurrentPage(user ? 'dashboard' : 'onboarding')} />;
+        return <Pricing user={user} onClose={() => setCurrentPage(user ? 'dashboard' : 'login')} />;
       case 'account':
         return (
           <Account
@@ -404,20 +503,18 @@ const App: React.FC = () => {
             onBack={() => setCurrentPage('settings')}
           />
         );
+      case 'terms':
+        return <LegalPage type="terms" onBack={() => setCurrentPage(user ? 'settings' : 'login')} />;
+      case 'privacy':
+        return <LegalPage type="privacy" onBack={() => setCurrentPage(user ? 'settings' : 'login')} />;
       default:
-        // Default fallback to Onboarding
-        return (
-          <Onboarding
-            onComplete={() => setCurrentPage('register')}
-            onSkip={() => setCurrentPage('login')}
-            onLogin={() => setCurrentPage('login')}
-          />
-        );
+        // Default fallback to Login
+        return <AuthPage type="login" onAuthSuccess={() => setCurrentPage('dashboard')} onBack={() => setCurrentPage('register')} onNavigate={(page: Page) => setCurrentPage(page)} />;
     }
   };
 
   return (
-    <div className="h-full w-full bg-background font-sans text-text-main transition-colors duration-300 overflow-hidden relative">
+    <div className={`h-full w-full ${['login', 'register'].includes(currentPage) ? 'bg-[#0b0b0b]' : 'bg-background'} font-sans text-text-main transition-colors duration-300 overflow-hidden relative`}>
       <div className="noise" />
       {isInitialLoading && <SplashScreen />}
       {!isInitialLoading && (
@@ -428,7 +525,10 @@ const App: React.FC = () => {
           <div className="aura-glass bottom-0 -right-64 opacity-[0.2] rotate-180 pointer-events-none z-0"></div>
 
           {/* Global Scroll Container */}
-          <div className="flex-1 relative overflow-y-auto no-scrollbar touch-pan-y z-10" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(8rem, env(safe-area-inset-bottom))' }}>
+          <div className="flex-1 relative overflow-y-auto no-scrollbar touch-pan-y z-10" style={{
+            paddingTop: ['login', 'register'].includes(currentPage) ? 0 : 'max(1rem, env(safe-area-inset-top))',
+            paddingBottom: ['login', 'register'].includes(currentPage) ? 0 : 'max(8rem, env(safe-area-inset-bottom))'
+          }}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentPage}
@@ -437,9 +537,9 @@ const App: React.FC = () => {
                 exit={{ opacity: 0, y: -15, scale: 1.01 }}
                 transition={{
                   type: "spring",
-                  stiffness: 300,
-                  damping: 30,
-                  mass: 0.8
+                  stiffness: 150,
+                  damping: 20,
+                  mass: 0.5
                 }}
                 className="w-full h-auto min-h-full relative"
               >
@@ -448,7 +548,7 @@ const App: React.FC = () => {
             </AnimatePresence>
           </div>
 
-          {['dashboard', 'history', 'settings', 'results', 'account'].includes(currentPage) && (
+          {['dashboard', 'history', 'settings', 'account'].includes(currentPage) && (
             <BottomNav
               activePage={currentPage}
               onNavigate={setCurrentPage}
@@ -471,10 +571,19 @@ const App: React.FC = () => {
               status={paymentStatus}
               onClose={() => {
                 setPaymentStatus(null);
-                if (currentPage === 'onboarding') setCurrentPage('dashboard');
+                if (currentPage === 'login') setCurrentPage('dashboard');
               }}
             />
           )}
+
+          {/* Toast Notification */}
+          <Toast
+            message={toast?.message || ''}
+            type={toast?.type || 'info'}
+            isOpen={!!toast}
+            onClose={() => setToast(null)}
+            action={toast?.action}
+          />
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Page } from '../types';
 import { haptics } from '../services/hapticsService';
+import { motion } from 'framer-motion';
 
 interface Props {
   activePage: Page;
@@ -15,7 +16,13 @@ const BottomNav: React.FC<Props> = ({ activePage, onNavigate }) => {
   ];
 
   return (
-    <div className="fixed left-0 w-full z-50 pointer-events-none flex justify-center" style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+    <motion.div
+      initial={{ y: 100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+      className="fixed left-0 w-full z-50 pointer-events-none flex justify-center"
+      style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}
+    >
       <div className="bg-surface backdrop-blur-md border border-border shadow-[0_8px_32px_rgba(0,0,0,0.12)] rounded-[2rem] p-2 pointer-events-auto flex items-center gap-2">
         {navItems.map((item) => {
           const isActive = activePage === item.page;
@@ -46,7 +53,7 @@ const BottomNav: React.FC<Props> = ({ activePage, onNavigate }) => {
           );
         })}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

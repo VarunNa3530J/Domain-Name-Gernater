@@ -15,7 +15,7 @@ const Account: React.FC<Props> = ({ user, onBack, onLogout, onUpgrade }) => {
     return (
         <div className="min-h-full relative bg-transparent font-sans">
             {/* Header */}
-            <div className="sticky top-0 z-50 flex items-center justify-between px-5 py-4 pt-[calc(env(safe-area-inset-top)+1.0rem)] bg-background/90 backdrop-blur-md border-b border-border">
+            <div className="sticky top-0 z-50 flex items-center justify-between px-5 py-4 pt-[calc(env(safe-area-inset-top)+0.5rem)] bg-background/90 backdrop-blur-md border-b border-border">
                 <button onClick={onBack} className="text-lg flex items-center">
                     <span className="material-symbols-outlined">arrow_back_ios_new</span>
                 </button>

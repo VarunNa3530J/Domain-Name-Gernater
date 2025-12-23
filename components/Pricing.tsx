@@ -4,6 +4,7 @@ import { User } from '../types';
 import { stripeService } from '../services/stripeService';
 import { haptics } from '../services/hapticsService';
 import { motion } from 'framer-motion';
+import Toast from './Toast';
 
 interface Props {
     user: User | null;
@@ -14,6 +15,7 @@ const Pricing: React.FC<Props> = ({ user, onClose }) => {
     const [billing, setBilling] = useState<'monthly' | 'yearly'>('yearly');
     const { config } = useAppConfig();
     const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState<string | null>(null);
     const { pricing } = config;
     const { plans, currency } = pricing;
 
@@ -32,7 +34,7 @@ const Pricing: React.FC<Props> = ({ user, onClose }) => {
         } catch (err: any) {
             console.error('[Pricing] Upgrade failed:', err);
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-            alert(`Payment failed to initialize.\n\nError: ${err.message}\nTarget: ${apiUrl}\n\nPlease ensure your phone is on the same WiFi as your computer.`);
+            setToast(`Payment failed to initialize.\n\nError: ${err.message}\nTarget: ${apiUrl}\n\nPlease ensure your phone is on the same WiFi as your computer.`);
         } finally {
             setLoading(false);
         }
@@ -41,7 +43,7 @@ const Pricing: React.FC<Props> = ({ user, onClose }) => {
     return (
         <div className="min-h-full relative bg-background font-sans pb-32">
             {/* Header */}
-            <header className="sticky top-0 z-50 flex items-center justify-between px-5 py-4 pt-[calc(env(safe-area-inset-top)+1.0rem)] bg-background/90 backdrop-blur-xl border-b border-border">
+            <header className="sticky top-0 z-50 flex items-center justify-between px-5 py-4 pt-[calc(env(safe-area-inset-top)+0.5rem)] bg-background/90 backdrop-blur-xl border-b border-border">
                 <div className="w-10"></div>
                 <h2 className="text-[15px] font-bold text-text-main uppercase tracking-widest">Pricing</h2>
                 <button
@@ -104,9 +106,9 @@ const Pricing: React.FC<Props> = ({ user, onClose }) => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className={`relative p-8 rounded-[2.5rem] overflow-hidden border transition-all duration-300 ${isPro
-                            ? 'bg-white dark:bg-[#1E1E1E] border-[#FF8B66] shadow-xl shadow-[#FF8B66]/10'
-                            : 'bg-[#121212] dark:bg-white border-transparent shadow-2xl'
+                        className={`relative p-8 rounded-[2.5rem] overflow-hidden border transition-all duration-500 ${isPro
+                            ? 'bg-surface border-[#FF8B66] shadow-xl shadow-[#FF8B66]/10'
+                            : 'bg-text-main text-background border-transparent shadow-2xl shadow-text-main/20'
                             }`}
                     >
                         {/* Background Decorations */}
@@ -117,34 +119,34 @@ const Pricing: React.FC<Props> = ({ user, onClose }) => {
                         <div className="relative z-10">
                             <div className="flex justify-between items-start mb-6">
                                 <div>
-                                    <h3 className={`text-3xl font-black mb-1 ${isPro ? 'text-black dark:text-white' : 'text-white dark:text-black'}`}>
+                                    <h3 className={`text-3xl font-black mb-1 ${isPro ? 'text-text-main' : 'text-background'}`}>
                                         {plans.founder.name}
                                     </h3>
-                                    <p className={`text-sm font-bold ${isPro ? 'text-black/40 dark:text-white/40' : 'text-white/40 dark:text-black/40'}`}>
+                                    <p className={`text-sm font-bold ${isPro ? 'text-text-muted' : 'text-background/50'}`}>
                                         Most Popular
                                     </p>
                                 </div>
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isPro ? 'bg-[#FF8B66]/10 text-[#FF8B66]' : 'bg-[#FF8B66] text-white dark:text-black'
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isPro ? 'bg-[#FF8B66]/10 text-[#FF8B66]' : 'bg-[#FF8B66] text-white'
                                     }`}>
                                     <span className="material-symbols-outlined text-2xl">workspace_premium</span>
                                 </div>
                             </div>
 
                             <div className="flex items-baseline gap-1 mb-8">
-                                <span className={`text-6xl font-black tracking-tighter ${isPro ? 'text-black dark:text-white' : 'text-white dark:text-black'}`}>
+                                <span className={`text-6xl font-black tracking-tighter ${isPro ? 'text-text-main' : 'text-background'}`}>
                                     {currency}{billing === 'yearly' ? plans.founder.yearlyPrice : plans.founder.monthlyPrice}
                                 </span>
-                                <span className={`text-lg font-bold ${isPro ? 'text-black/40 dark:text-white/40' : 'text-white/40 dark:text-black/40'}`}>/mo</span>
+                                <span className={`text-lg font-bold ${isPro ? 'text-text-muted' : 'text-background/50'}`}>/mo</span>
                             </div>
 
                             <ul className="space-y-4 mb-10">
                                 {plans.founder.perks.map((perk, i) => (
                                     <li key={i} className="flex items-center gap-4">
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${isPro ? 'bg-[#FF8B66]/10 text-[#FF8B66]' : 'bg-white/10 dark:bg-black/10 text-[#FF8B66]'
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${isPro ? 'bg-[#FF8B66]/10 text-[#FF8B66]' : 'bg-background/10 text-[#FF8B66]'
                                             }`}>
                                             <span className="material-symbols-outlined text-[14px] font-bold">check</span>
                                         </div>
-                                        <span className={`text-[15px] font-medium leading-tight ${isPro ? 'text-black dark:text-white' : 'text-white dark:text-black'}`}>
+                                        <span className={`text-[15px] font-medium leading-tight ${isPro ? 'text-text-main' : 'text-background'}`}>
                                             {perk}
                                         </span>
                                     </li>
@@ -170,20 +172,20 @@ const Pricing: React.FC<Props> = ({ user, onClose }) => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
-                        className="p-8 rounded-[2.5rem] bg-white dark:bg-[#1E1E1E] border border-black/5 dark:border-white/5"
+                        className="p-8 rounded-[2.5rem] bg-surface border border-border"
                     >
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-2xl font-black text-black dark:text-white">{plans.hobbyist.name}</h3>
-                            <span className="text-2xl font-black text-black dark:text-white">{currency}0</span>
+                            <h3 className="text-2xl font-black text-text-main">{plans.hobbyist.name}</h3>
+                            <span className="text-2xl font-black text-text-main">{currency}0</span>
                         </div>
 
                         <ul className="space-y-4 mb-8">
                             {plans.hobbyist.perks.map((perk, i) => (
                                 <li key={i} className="flex items-center gap-4">
-                                    <div className="w-6 h-6 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center shrink-0 text-black/40 dark:text-white/40">
+                                    <div className="w-6 h-6 rounded-full bg-background flex items-center justify-center shrink-0 text-text-muted/40">
                                         <span className="material-symbols-outlined text-[14px] font-bold">check</span>
                                     </div>
-                                    <span className="text-[15px] font-medium text-black/60 dark:text-white/60">{perk}</span>
+                                    <span className="text-[15px] font-medium text-text-muted">{perk}</span>
                                 </li>
                             ))}
                         </ul>
@@ -191,8 +193,8 @@ const Pricing: React.FC<Props> = ({ user, onClose }) => {
                         <button
                             onClick={onClose}
                             className={`w-full h-14 rounded-[1.5rem] font-bold uppercase tracking-widest text-xs border-2 transition-all active:scale-[0.98] ${!isPro
-                                ? 'border-black dark:border-white text-black dark:text-white'
-                                : 'border-black/5 dark:border-white/5 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white'
+                                ? 'border-text-main text-text-main'
+                                : 'border-border text-text-muted hover:text-text-main'
                                 }`}
                         >
                             {isPro ? 'Close' : 'Continue Free'}
@@ -200,6 +202,14 @@ const Pricing: React.FC<Props> = ({ user, onClose }) => {
                     </motion.div>
                 </div>
             </div>
+
+            {/* Toast Notification */}
+            <Toast
+                message={toast || ''}
+                type="error"
+                isOpen={!!toast}
+                onClose={() => setToast(null)}
+            />
         </div>
     );
 };
